@@ -40,25 +40,47 @@ ufo1 <- ufo %>%
 #BONUS: For some of the rows where Country column is blank, the country name is found in the City column in brackets. Where Country info is missing, try to extract the information in brackets in the City column and impute that value in the Country column.
 #Convert Datetime and Date_posted columns into appropriate formats
 ufo1$date_posted <- as.Date(strptime(ufo1$date_posted, format = "%d-%m-%Y"))
-ufo1$datetime <- strptime(ufo1$datetime, format = "%Y-%m-%d %H:%M")
+ufo1$datetime <- as.Date(strptime(ufo1$datetime, format = "%Y-%m-%d %H:%M"))
 #NUFORC officials comment on sightings that may be hoax.  Figure out a way (go through the Comments and decide how a proper filter should look like) to identify possible hoax reports. Create a new boolean column "is_hoax", and populate this column with TRUE if the sighting is a possible hoax, FALSE otherwise.
 
-#Create a regex of words that when found in the comment section, likely indicate that the UFO sighting is a hoax. Words are seperated by the or | character, so that all words aread in the grepl function. 
-hoax_comment <- "HOAX| hoax | fake | FAKE | Fake | False | false"
+#Create a regex of words that when found in the comment section, likely indicate that the UFO sighting is a hoax. Words are separated by the or | character, so that all words are read in the grepl function. 
+hoax_comment <- "HOAX| hoax | Hoax | fake | FAKE | Fake | False | false"
 ufo2 <- ufo1 %>%
   mutate(is_hoax = grepl(hoax_comment, ufo1$comments))
   
 #Create a table reporting the percentage of hoax sightings per country.
 hoax_per_country <- ufo2 %>%
   group_by(country) %>%
-  filter(is_hoax) %>%
-  summarise(percent = n())
+  summarize(sightings = n(),
+            hoax_count = sum(is_hoax),
+            hoax_percentage = (hoax_count / sightings) * 100)
+#Remove the sightings and hoax_count columns from the dataset. Select() function allows you to choose which columns to keep. Assigned the columns to a new table called hoax_per_country2.
+hoax_per_country2 <- hoax_per_country %>%
+  select(country, hoax_percentage)
 
 #Add another column to the dataset (report_delay) and populate with the time difference in days, between the date of the sighting and the date it was reported.
 ufo3 <- ufo2 %>%
-  mutate(report_delay = date_posted - datetime)
-  
+  mutate(report_delay = as.numeric(date_posted) - as.numeric(datetime)) %>%
 #Remove the rows where the sighting was reported before it happened.
+  filter(report_delay >= 0)
 #Create a table reporting the average report_delay per country.
+table2 <- ufo3 %>%
+  group_by(country) %>%
+  summarize(total_report_delay = sum(report_delay),
+            total_country = n(),
+            avg_report_delay = total_report_delay / total_country)
 #Check the data quality (missingness, format, range etc) of the "duration seconds" column. Explain what kinds of problems you have identified and how you chose to deal with them, in your comments.
+
+summary(ufo$duration.seconds)
+class(ufo$duration.seconds)
+sum(is.na(ufo$duration.seconds))
+
 #Create a histogram using the "duration seconds" column#.
+
+hist(log(ufo3$duration.seconds))
+
+
+
+
+
+
